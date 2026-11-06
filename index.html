@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopmon - Sua Loja Pokémon</title>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* ========== RESET E VARIÁVEIS ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --amarelo: #FFCB05;
+            --preto: #1a1a1a;
+            --branco: #ffffff;
+            --vermelho: #EE1515;
+            --cinza-escuro: #2d2d2d;
+            --cinza-claro: #f4f4f4;
+            --sombra: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        body {
+            background-color: var(--cinza-claro);
+            color: var(--preto);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ========== HEADER / LOGO ========== */
+        header {
+            background-color: var(--preto);
+            color: var(--branco);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: var(--sombra);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 4px solid var(--amarelo);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        /* Pokebola CSS */
+        .pokebola {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(to bottom, var(--vermelho) 50%, var(--branco) 50%);
+            border-radius: 50%;
+            border: 3px solid var(--preto);
+            position: relative;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .pokebola::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            background: var(--branco);
+            border: 2px solid var(--preto);
+            border-radius: 50%;
+        }
+        .pokebola::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--preto);
+            transform: translateY(-50%);
+        }
+
+        /* Orelha de Pikachu (simplificada com CSS) */
+        .orelha-pikachu {
+            width: 12px;
+            height: 25px;
+            background: var(--amarelo);
+            border-radius: 50% 50% 0 0;
+            position: absolute;
+            top: -12px;
+            left: 8px;
+            transform: rotate(-20deg);
+            border: 2px solid var(--preto);
+            border-bottom: none;
+            z-index: -1;
+        }
+
+        .logo-text {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--amarelo);
+            text-shadow: 2px 2px 0 var(--vermelho);
+        }
+        .logo-text span {
+            color: var(--branco);
+        }
+
+        nav {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--branco);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        nav a:hover, nav a.active {
+            background-color: var(--amarelo);
+            color: var(--preto);
+        }
+
+        .cart-icon {
+            position: relative;
+            background: var(--vermelho);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+        }
+        .cart-count {
+            background: var(--amarelo);
+            color: var(--preto);
+            border-radius: 50%;
+            padding: 0 6px;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+
+        /* ========== CONTAINER PRINCIPAL ========== */
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: var(--preto);
+            border-left: 6px solid var(--vermelho);
+            padding-left: 1rem;
+        }
+
+        /* ========== GRADE DE PRODUTOS ========== */
+        .produtos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .produto-card {
+            background: var(--branco);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: var(--sombra);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+            border: 1px solid #eee;
+            border-top: 4px solid var(--amarelo);
+        }
+
+        .produto-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .produto-card img {
+            width: 100%;
+            height: 140px;
+            object-fit: contain;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 0.8rem;
+        }
+
+        .produto-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+            color: var(--cinza-escuro);
+        }
+
+        .produto-card .preco {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--vermelho);
+            margin-bottom: 0.5rem;
+        }
+
+        .produto-card .estoque-info {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 0.8rem;
+        }
+
+        .btn {
+            background-color: var(--amarelo);
+            color: var(--preto);
+            border: none;
+            padding: 0.7rem 1rem;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background-color: #e6b800;
+        }
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-vermelho {
+            background-color: var(--vermelho);
+            color: white;
+        }
+        .btn-vermelho:hover {
+            background-color: #c00;
+        }
+        .btn-preto {
+            background-color: var(--preto);
+            color: white;
+        }
+        .btn-preto:hover {
+            background-color: #333;
+        }
+
+        /* ========== CARRINHO ========== */
+        .carrinho-container {
+            background: var(--branco);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--sombra);
+        }
+
+        .carrinho-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .carrinho-item-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .carrinho-item-info img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        .carrinho-item button {
+            background: var(--vermelho);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+        }
+
+        .carrinho-total {
+            text-align: right;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-top: 1.5rem;
+            color: var(--vermelho);
+        }
+
+        .acoes-carrinho {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: flex-end;
+        }
+
+        /* ========== PAINEL DE ESTOQUE (ADMIN) ========== */
+        .admin-container {
+            background: var(--branco);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--sombra);
+        }
+
+        .form-estoque {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: #f9f9f9;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 6px solid var(--amarelo);
+        }
+
+        .form-estoque input, .form-estoque textarea {
+            padding: 0.7rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            width: 100%;
+        }
+        .form-estoque textarea {
+            grid-column: span 2;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .form-estoque button {
+            grid-column: span 2;
+            width: auto;
+            padding: 0.8rem;
+        }
+
+        .tabela-estoque {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .tabela-estoque th, .tabela-estoque td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .tabela-estoque th {
+            background: var(--preto);
+            color: var(--branco);
+        }
+        .tabela-estoque tr:hover {
+            background: #f9f9f9;
+        }
+        .tabela-estoque .btn {
+            width: auto;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        /* ========== UTILITÁRIOS ========== */
+        .msg-vazio {
+            text-align: center;
+            padding: 3rem;
+            color: #888;
+        }
+        .msg-erro {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .form-estoque {
+                grid-template-columns: 1fr;
+            }
+            .form-estoque textarea {
+                grid-column: span 1;
+            }
+            .form-estoque button {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container" onclick="window.location.reload()">
+            <div style="position: relative;">
+                <div class="pokebola"></div>
+                <div class="orelha-pikachu"></div>
+            </div>
+            <div class="logo-text">Shop<span>mon</span></div>
+        </div>
+        <nav>
+            <a href="#" id="nav-loja" class="active" onclick="mostrarView('loja')">Loja</a>
+            <a href="#" id="nav-admin" onclick="mostrarView('admin')">Estoque</a>
+            <a href="#" class="cart-icon" onclick="mostrarView('carrinho')">
+                🛒 Carrinho <span class="cart-count" id="cart-count">0</span>
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- VIEW: LOJA -->
+        <div id="view-loja" class="view active">
+            <h2>Nossos Produtos</h2>
+            <div id="produtos-lista" class="produtos-grid">
+                <div class="loading">Carregando produtos...</div>
+            </div>
+        </div>
+
+        <!-- VIEW: CARRINHO -->
+        <div id="view-carrinho" class="view">
+            <h2>Seu Carrinho</h2>
+            <div class="carrinho-container">
+                <div id="carrinho-itens">
+                    <p class="msg-vazio">Seu carrinho está vazio.</p>
+                </div>
+                <div id="carrinho-total" class="carrinho-total" style="display: none;">Total: R$ 0,00</div>
+                <div class="acoes-carrinho" id="acoes-carrinho" style="display: none;">
+                    <button class="btn btn-vermelho" onclick="limparCarrinho()">Limpar Carrinho</button>
+                    <button class="btn btn-preto" onclick="finalizarCompra()">Finalizar Compra via WhatsApp</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: ADMIN / ESTOQUE -->
+        <div id="view-admin" class="view">
+            <h2>Controle de Estoque</h2>
+            <div class="admin-container">
+                <div id="admin-msg"></div>
+                <h3 style="margin-bottom: 1rem;">Adicionar Novo Produto</h3>
+                <form class="form-estoque" id="form-add-produto" onsubmit="adicionarProduto(event)">
+                    <input type="text" id="add-nome" placeholder="Nome do produto" required>
+                    <input type="number" id="add-preco" placeholder="Preço (R$)" step="0.01" required>
+                    <input type="number" id="add-quantidade" placeholder="Quantidade" required>
+                    <input type="text" id="add-imagem" placeholder="URL da imagem (opcional)">
+                    <textarea id="add-descricao" placeholder="Descrição curta (opcional)"></textarea>
+                    <button type="submit" class="btn">Adicionar ao Estoque</button>
+                </form>
+
+                <h3 style="margin-bottom: 1rem;">Produtos no Estoque</h3>
+                <div id="tabela-estoque-container">
+                    <div class="loading">Carregando estoque...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        // CONFIGURAÇÃO - SUBSTITUA AQUI
+        // ==========================================
+        const SUPABASE_URL = 'https://bvwlgpwjhjbbcxecvbej.supabase.co'; // Ex: https://xyzcompany.supabase.co
+        const SUPABASE_ANON_KEY = 'sb_publishable_xPCckcOtzKLShwmVMdlevQ_4NEzdsy3'; // Ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        
+        // Número do WhatsApp (Formato Internacional: 55 + DDD + Número)
+        // O usuário passou 8189782301. Assumindo Brasil (55), o DDD seria 81 e o número 9782301.
+        const WHATSAPP_NUMBER = '558189782301'; 
+
+        // ==========================================
+        // LÓGICA DO SUPABASE E ESTADO
+        // ==========================================
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let produtos = [];
+        let carrinho = JSON.parse(localStorage.getItem('shopmon_carrinho')) || [];
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarProdutos();
+            atualizarCarrinhoUI();
+        });
+
+        // ==========================================
+        // NAVEGAÇÃO
+        // ==========================================
+        function mostrarView(view) {
+            // Esconde todas as views
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+            
+            // Mostra a view selecionada
+            document.getElementById(`view-${view}`).classList.add('active');
+            
+            // Atualiza nav ativa (simplificado)
+            if (view === 'loja') document.getElementById('nav-loja').classList.add('active');
+            if (view === 'admin') document.getElementById('nav-admin').classList.add('active');
+            
+            // Se for carrinho, atualiza a lista
+            if (view === 'carrinho') renderizarCarrinho();
+            // Se for admin, atualiza tabela de estoque
+            if (view === 'admin') renderizarTabelaEstoque();
+        }
+
+        // ==========================================
+        // FUNÇÕES DE PRODUTOS / ESTOQUE (SUPABASE)
+        // ==========================================
+        async function carregarProdutos() {
+            const listaDiv = document.getElementById('produtos-lista');
+            listaDiv.innerHTML = '<div class="loading">Carregando produtos...</div>';
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('estoque')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+                
+                produtos = data || [];
+                renderizarLoja();
+            } catch (error) {
+                console.error('Erro ao carregar produtos:', error);
+                listaDiv.innerHTML = `<div class="msg-erro">Erro ao conectar com o banco de dados. Verifique as configurações do Supabase.</div>`;
+            }
+        }
+
+        function renderizarLoja() {
+            const listaDiv = document.getElementById('produtos-lista');
+            
+            if (!produtos || produtos.length === 0) {
+                listaDiv.innerHTML = '<p class="msg-vazio">Nenhum produto cadastrado ainda.</p>';
+                return;
+            }
+
+            // Filtra apenas produtos com estoque > 0 para a loja (opcional)
+            const produtosDisponiveis = produtos.filter(p => p.quantidade > 0);
+            
+            if (produtosDisponiveis.length === 0) {
+                listaDiv.innerHTML = '<p class="msg-vazio">Todos os produtos estão esgotados no momento.</p>';
+                return;
+            }
+
+            listaDiv.innerHTML = produtosDisponiveis.map(produto => `
+                <div class="produto-card">
+                    <img src="${produto.imagem || 'https://via.placeholder.com/150?text=Pokemon'}" alt="${produto.nome}">
+                    <h3>${produto.nome}</h3>
+                    <div class="preco">R$ ${Number(produto.preco).toFixed(2).replace('.', ',')}</div>
+                    <div class="estoque-info">Disponível: ${produto.quantidade} un.</div>
+                    <button class="btn" onclick="adicionarAoCarrinho(${produto.id})">Adicionar ao Carrinho</button>
+                </div>
+            `).join('');
+        }
+
+        async function adicionarProduto(event) {
+            event.preventDefault();
+            const msgDiv = document.getElementById('admin-msg');
+            msgDiv.innerHTML = '';
+
+            const nome = document.getElementById('add-nome').value;
+            const preco = parseFloat(document.getElementById('add-preco').value);
+            const quantidade = parseInt(document.getElementById('add-quantidade').value);
+            const imagem = document.getElementById('add-imagem').value || 'https://via.placeholder.com/150?text=Pokemon';
+            const descricao = document.getElementById('add-descricao').value;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('estoque')
+                    .insert([{ 
+                        nome: nome, 
+                        preco: preco, 
+                        quantidade: quantidade, 
+                        imagem: imagem,
+                        descricao: descricao
+                    }])
+                    .select();
+
+                if (error) throw error;
+
+                msgDiv.innerHTML = '<div style="color: green; margin-bottom: 1rem;">Produto adicionado com sucesso!</div>';
+                document.getElementById('form-add-produto').reset();
+                
+                // Recarrega a lista de produtos
+                await carregarProdutos();
+                renderizarTabelaEstoque();
+            } catch (error) {
+                console.error('Erro ao adicionar:', error);
+                msgDiv.innerHTML = `<div class="msg-erro">Erro ao adicionar produto: ${error.message}</div>`;
+            }
+        }
+
+        async function renderizarTabelaEstoque() {
+            const container = document.getElementById('tabela-estoque-container');
+            container.innerHTML = '<div class="loading">Carregando estoque...</div>';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('estoque')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p class="msg-vazio">Nenhum produto no estoque.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table class="tabela-estoque">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Preço</th>
+                                <th>Qtd</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.forEach(p => {
+                    html += `
+                        <tr>
+                            <td>${p.id}</td>
+                            <td>${p.nome}</td>
+                            <td>R$ ${Number(p.preco).toFixed(2).replace('.', ',')}</td>
+                            <td>${p.quantidade}</td>
+                            <td>
+                                <button class="btn btn-vermelho" onclick="excluirProduto(${p.id})">Excluir</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('Erro ao renderizar tabela:', error);
+                container.innerHTML = `<div class="msg-erro">Erro ao carregar estoque.</div>`;
+            }
+        }
+
+        async function excluirProduto(id) {
+            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('estoque')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                await carregarProdutos();
+                renderizarTabelaEstoque();
+                
+                // Remove do carrinho local se existir
+                carrinho = carrinho.filter(item => item.id !== id);
+                salvarCarrinho();
+                atualizarCarrinhoUI();
+                if (document.getElementById('view-carrinho').classList.contains('active')) {
+                    renderizarCarrinho();
+                }
+            } catch (error) {
+                alert('Erro ao excluir: ' + error.message);
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DO CARRINHO
+        // ==========================================
+        function adicionarAoCarrinho(idProduto) {
+            const produto = produtos.find(p => p.id === idProduto);
+            if (!produto) return;
+
+            // Verifica estoque
+            const itemNoCarrinho = carrinho.find(item => item.id === idProduto);
+            const qtdNoCarrinho = itemNoCarrinho ? itemNoCarrinho.quantidade : 0;
+            
+            if (qtdNoCarrinho >= produto.quantidade) {
+                alert('Quantidade máxima em estoque atingida!');
+                return;
+            }
+
+            if (itemNoCarrinho) {
+                itemNoCarrinho.quantidade += 1;
+            } else {
+                carrinho.push({
+                    id: produto.id,
+                    nome: produto.nome,
+                    preco: Number(produto.preco),
+                    imagem: produto.imagem,
+                    quantidade: 1
+                });
+            }
+
+            salvarCarrinho();
+            atualizarCarrinhoUI();
+            
+            // Feedback visual rápido
+            const btn = event.target;
+            const textoOriginal = btn.innerText;
+            btn.innerText = 'Adicionado!';
+            btn.style.backgroundColor = '#4caf50';
+            setTimeout(() => {
+                btn.innerText = textoOriginal;
+                btn.style.backgroundColor = '';
+            }, 1000);
+        }
+
+        function removerDoCarrinho(idProduto) {
+            carrinho = carrinho.filter(item => item.id !== idProduto);
+            salvarCarrinho();
+            atualizarCarrinhoUI();
+            renderizarCarrinho();
+        }
+
+        function salvarCarrinho() {
+            localStorage.setItem('shopmon_carrinho', JSON.stringify(carrinho));
+        }
+
+        function atualizarCarrinhoUI() {
+            const totalItens = carrinho.reduce((acc, item) => acc + item.quantidade, 0);
+            document.getElementById('cart-count').innerText = totalItens;
+        }
+
+        function renderizarCarrinho() {
+            const container = document.getElementById('carrinho-itens');
+            const totalDiv = document.getElementById('carrinho-total');
+            const acoesDiv = document.getElementById('acoes-carrinho');
+
+            if (carrinho.length === 0) {
+                container.innerHTML = '<p class="msg-vazio">Seu carrinho está vazio.</p>';
+                totalDiv.style.display = 'none';
+                acoesDiv.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            let total = 0;
+
+            carrinho.forEach(item => {
+                const subtotal = item.preco * item.quantidade;
+                total += subtotal;
+                html += `
+                    <div class="carrinho-item">
+                        <div class="carrinho-item-info">
+                            <img src="${item.imagem || 'https://via.placeholder.com/50'}" alt="${item.nome}">
+                            <div>
+                                <strong>${item.nome}</strong><br>
+                                <span>Qtd: ${item.quantidade} x R$ ${item.preco.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span>R$ ${subtotal.toFixed(2).replace('.', ',')}</span>
+                            <button onclick="removerDoCarrinho(${item.id})">Remover</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            totalDiv.innerText = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+            totalDiv.style.display = 'block';
+            acoesDiv.style.display = 'flex';
+        }
+
+        function limparCarrinho() {
+            if (confirm('Limpar todo o carrinho?')) {
+                carrinho = [];
+                salvarCarrinho();
+                atualizarCarrinhoUI();
+                renderizarCarrinho();
+            }
+        }
+
+        function finalizarCompra() {
+            if (carrinho.length === 0) return;
+
+            let mensagem = 'Olá! Gostaria de fazer um pedido na Shopmon:\n\n';
+            let total = 0;
+
+            carrinho.forEach(item => {
+                const subtotal = item.preco * item.quantidade;
+                total += subtotal;
+                mensagem += `- ${item.nome} (x${item.quantidade}) - R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+            });
+
+            mensagem += `\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+            mensagem += `\n\nAguardo instruções para pagamento e entrega.`;
+
+            const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(mensagem)}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>
